@@ -6,4 +6,4 @@
 	url = https://github.com/limxdynamics/tron1-rl-isaaclab.git
 [submodule "tron1-rl-isaaclab-cozum"]
 	path = tron1-rl-isaaclab-cozum
-	url = https://github.com/bahadircancv/tron1-rl-isaaclab-cozum.git
+	url = https://github.com/nithin127/biped-rl-isaaclab-iisc.git
