@@ -128,8 +128,13 @@ if [[ -n $1 ]]; then
                     policy_type="COPT"
                 elif [[ "$3" == "sd-brs1" ]]; then
                     task="Isaac-Limx-SDBRS1-Blind-Flat-v0"
+                elif [[ "$3" == "sd-brs1-rough" ]]; then
+                    task="Isaac-Limx-SDBRS1-Blind-Rough-v0"
                 elif [[ "$3" == "sd-brs1-him" ]]; then
                     task="Isaac-Limx-SDBRS1-HIM-Blind-Flat-v0"
+                    policy_type="HIMPPO"
+                elif [[ "$3" == "sd-brs1-him-rough" ]]; then
+                    task="Isaac-Limx-SDBRS1-HIM-Blind-Rough-v0"
                     policy_type="HIMPPO"
                 fi
                 iexec "$container" "./isaaclab.sh -p -m pip install -e biped/exts/bipedal_locomotion biped/co_optimisation/ biped/himloco"
@@ -163,8 +168,13 @@ if [[ -n $1 ]]; then
                     policy_type="COPT"
                 elif [[ "$3" == "sd-brs1" ]]; then
                     task="Isaac-Limx-SDBRS1-Blind-Flat-Play-v0"
+                elif [[ "$3" == "sd-brs1-rough" ]]; then
+                    task="Isaac-Limx-SDBRS1-Blind-Rough-Play-v0"
                 elif [[ "$3" == "sd-brs1-him" ]]; then
                     task="Isaac-Limx-SDBRS1-HIM-Blind-Flat-Play-v0"
+                    policy_type="HIMPPO"
+                elif [[ "$3" == "sd-brs1-him-rough" ]]; then
+                    task="Isaac-Limx-SDBRS1-HIM-Blind-Rough-Play-v0"
                     policy_type="HIMPPO"
                 fi
                 iexec "$container" "./isaaclab.sh -p -m pip install -e biped/exts/bipedal_locomotion biped/co_optimisation/ biped/himloco"
@@ -221,8 +231,13 @@ if [[ -n $1 ]]; then
             policy_type="HIMPPO"
         elif [[ "$mode" == "sd-brs1" ]]; then
             task="Isaac-Limx-SDBRS1-Blind-Flat-v0"
+        elif [[ "$mode" == "sd-brs1-rough" ]]; then
+            task="Isaac-Limx-SDBRS1-Blind-Rough-v0"
         elif [[ "$mode" == "sd-brs1-him" ]]; then
             task="Isaac-Limx-SDBRS1-HIM-Blind-Flat-v0"
+            policy_type="HIMPPO"
+        elif [[ "$mode" == "sd-brs1-him-rough" ]]; then
+            task="Isaac-Limx-SDBRS1-HIM-Blind-Rough-v0"
             policy_type="HIMPPO"
         fi
         echo "Resuming $task from $load_run/$checkpoint for $max_iterations iterations on $container (device $device)"
