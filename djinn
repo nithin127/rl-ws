@@ -107,9 +107,23 @@ if [[ -n $1 ]]; then
                 if [[ -n "$5" ]]; then
                     run_name_arg="--run_name $5"
                 fi
+                # set DEBUG_NAN=1 in the environment to enable NaN diagnostics
+                # (traps the first non-finite obs/action/reward, dumps a
+                # pre-crash checkpoint, then halts). Cheap, off by default.
+                # Additionally set DEBUG_NAN_ANOMALY=1 to enable autograd
+                # anomaly detection (~2-3x slower; only needed if the cheap
+                # checks never fire before the std crash).
+                debug_nan_arg=""
+                if [[ -n "$DEBUG_NAN" ]]; then
+                    debug_nan_arg="--debug_nan"
+                fi
+                if [[ -n "$DEBUG_NAN_ANOMALY" ]]; then
+                    debug_nan_arg="$debug_nan_arg --debug_nan_anomaly"
+                fi
 
                 task="Isaac-Limx-SF-Identified-Blind-Flat-v0"
                 policy_type="PPO"
+                min_action_std_arg=""
                 if [[ "$3" == "base" ]]; then
                     echo "Starting base env training with seed $seed for task $task"
                 elif [[ "$3" == "base-urdf" ]]; then
@@ -128,24 +142,32 @@ if [[ -n $1 ]]; then
                     policy_type="COPT"
                 elif [[ "$3" == "sd-brs1" ]]; then
                     task="Isaac-Limx-SDBRS1-Blind-Flat-v0"
+                    min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
                 elif [[ "$3" == "sd-brs1-rough" ]]; then
                     task="Isaac-Limx-SDBRS1-Blind-Rough-v0"
+                    min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
                 elif [[ "$3" == "sd-brs1-him" ]]; then
                     task="Isaac-Limx-SDBRS1-HIM-Blind-Flat-v0"
                     policy_type="HIMPPO"
+                    min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
                 elif [[ "$3" == "sd-brs1-him-rough" ]]; then
                     task="Isaac-Limx-SDBRS1-HIM-Blind-Rough-v0"
                     policy_type="HIMPPO"
+                    min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
                 fi
                 iexec "$container" "./isaaclab.sh -p -m pip install -e biped/exts/bipedal_locomotion biped/co_optimisation/ biped/himloco"
-                iexec "$container" "MESA_GL_VERSION_OVERRIDE=4.6 ./isaaclab.sh -p biped/scripts/rsl_rl/train.py --task $task --video --video_length 2000 --video_interval 10000 --save_interval 1000 --seed 42 --headless --device $device --policy-type $policy_type $run_name_arg"
+                iexec "$container" "MESA_GL_VERSION_OVERRIDE=4.6 ./isaaclab.sh -p biped/scripts/rsl_rl/train.py --task $task --video --video_length 2000 --video_interval 10000 --save_interval 1000 --seed 42 --headless --device $device --policy-type $policy_type $run_name_arg $debug_nan_arg $min_action_std_arg"
             fi
         elif [[ "$2" == "play" ]]; then
             if [[ ! -n "$3" ]]; then
                 echo "no mode provided exiting"
                 exit 1
             else
-                checkpoint_path="/workspace/isaaclab/logs/rsl_rl/$4"
+                exp_name=""
+                if [[ "$3" == sd-brs1* ]]; then
+                    exp_name="sd_brs1_flat/"
+                fi
+                checkpoint_path="/workspace/isaaclab/logs/rsl_rl/$exp_name$4"
                 seed="$5"
                 # one GPU per container → in-container device is always cuda:0;
                 # the numeric arg ($6) selects which GPU container to run in.
@@ -177,8 +199,32 @@ if [[ -n $1 ]]; then
                     task="Isaac-Limx-SDBRS1-HIM-Blind-Rough-Play-v0"
                     policy_type="HIMPPO"
                 fi
+                # set LIN_VEL_X / LIN_VEL_Y / ANG_VEL_Z in the environment to pin the
+                # commanded base velocity to a fixed value instead of random sampling
+                # (e.g. LIN_VEL_X=0.5 ./djinn start play sd-brs1 <run> <seed>).
+                velocity_arg=""
+                if [[ -n "$LIN_VEL_X" ]]; then
+                    velocity_arg="$velocity_arg --lin_vel_x $LIN_VEL_X"
+                fi
+                if [[ -n "$LIN_VEL_Y" ]]; then
+                    velocity_arg="$velocity_arg --lin_vel_y $LIN_VEL_Y"
+                fi
+                if [[ -n "$ANG_VEL_Z" ]]; then
+                    velocity_arg="$velocity_arg --ang_vel_z $ANG_VEL_Z"
+                fi
+                num_envs_arg=""
+                if [[ -n "$NUM_ENVS" ]]; then
+                    num_envs_arg="--num_envs $NUM_ENVS"
+                fi
+                # set CAMERA_VIEWS to a comma-separated list (side,front,back,top) to
+                # additionally record extra robot-attached camera angles, each to its
+                # own video file (e.g. CAMERA_VIEWS=side,top ./djinn start play sd-brs1 <run> <seed>).
+                camera_views_arg=""
+                if [[ -n "$CAMERA_VIEWS" ]]; then
+                    camera_views_arg="--camera_views $CAMERA_VIEWS"
+                fi
                 iexec "$container" "./isaaclab.sh -p -m pip install -e biped/exts/bipedal_locomotion biped/co_optimisation/ biped/himloco"
-                iexec "$container" "MESA_GL_VERSION_OVERRIDE=4.6 ./isaaclab.sh -p biped/scripts/rsl_rl/play.py --task $task --video --video_length 1000 --seed $seed --checkpoint_path $checkpoint_path --enable_cameras --headless --device $device --policy-type $policy_type"
+                iexec "$container" "MESA_GL_VERSION_OVERRIDE=4.6 ./isaaclab.sh -p biped/scripts/rsl_rl/play.py --task $task --video --video_length 1000 --seed $seed --checkpoint_path $checkpoint_path --enable_cameras --headless --device $device --policy-type $policy_type $num_envs_arg $velocity_arg $camera_views_arg"
             fi
         elif [[ "$2" == "evaluation" ]]; then
             task="Isaac-Limx-SF-Blind-Flat-v0"
@@ -198,10 +244,20 @@ if [[ -n $1 ]]; then
                     echo \"Evaluating policy for experiment at \$d\"
                     ./isaaclab.sh -p biped/scripts/rsl_rl/play.py --task $task --video --video_length 2500 --num_envs 1 --seed $seed --checkpoint_path \$d/model_14999.pt --enable_cameras --headless --device $device
                 done"
-        elif [[ "$2" == "visualise-evaluation" ]]; then
-            gpu_id="${3:-0}"
+        elif [[ "$2" == "visualise" ]]; then
+            # Usage: ./djinn start visualise <exp_name> [gpu_id] [port]
+            # <exp_name> is the folder under logs/rsl_rl containing one subdirectory
+            # per run (each with a data/<seed>/dump.npy from play.py). Example:
+            # ./djinn start visualise sd_brs1_flat
+            if [[ ! -n "$3" ]]; then
+                echo "no experiment folder provided (folder under logs/rsl_rl), exiting"
+                exit 1
+            fi
+            exp_name="$3"
+            gpu_id="${4:-0}"
+            port="${5:-8050}"
             container="isaac-lab-base-$USER-gpu$gpu_id"
-            iexec "$container" "./isaaclab.sh -p /workspace/isaaclab/biped/scripts/rsl_rl/visualise.py --evaluation --experiment_dir /workspace/isaaclab/logs/rsl_rl --log_dir /workspace/isaaclabs/outputs"
+            iexec "$container" "./isaaclab.sh -p -m pip install dash plotly && ./isaaclab.sh -p biped/scripts/rsl_rl/visualise.py /workspace/isaaclab/logs/rsl_rl/$exp_name --port $port"
         fi
     elif [[ "$1" == "resume" ]]; then
         # Usage: ./djinn resume <mode> <gpu_id> <load_run> <checkpoint> <max_iterations> [run_name]
@@ -215,6 +271,16 @@ if [[ -n $1 ]]; then
         if [[ -n "$7" ]]; then
             run_name_arg="--run_name $7"
         fi
+        # set DEBUG_NAN=1 (and optionally DEBUG_NAN_ANOMALY=1) to enable NaN
+        # diagnostics on a resumed run too -- see the equivalent comment in
+        # the "start train" branch above.
+        debug_nan_arg=""
+        if [[ -n "$DEBUG_NAN" ]]; then
+            debug_nan_arg="--debug_nan"
+        fi
+        if [[ -n "$DEBUG_NAN_ANOMALY" ]]; then
+            debug_nan_arg="$debug_nan_arg --debug_nan_anomaly"
+        fi
         if [[ ! -n "$mode" || ! -n "$load_run" || ! -n "$checkpoint" ]]; then
             echo "Usage: djinn resume <mode> <gpu_id> <load_run> <checkpoint> <max_iterations> [run_name]"
             exit 1
@@ -224,6 +290,7 @@ if [[ -n $1 ]]; then
         container="isaac-lab-base-$USER-gpu$gpu_id"
         task="Isaac-Limx-SF-Identified-Blind-Rough-v0"
         policy_type="PPO"
+        min_action_std_arg=""
         if [[ "$mode" == "base" ]]; then
             task="Isaac-Limx-SF-Identified-Blind-Rough-v0"
         elif [[ "$mode" == "him" ]]; then
@@ -231,17 +298,21 @@ if [[ -n $1 ]]; then
             policy_type="HIMPPO"
         elif [[ "$mode" == "sd-brs1" ]]; then
             task="Isaac-Limx-SDBRS1-Blind-Flat-v0"
+            min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
         elif [[ "$mode" == "sd-brs1-rough" ]]; then
             task="Isaac-Limx-SDBRS1-Blind-Rough-v0"
+            min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
         elif [[ "$mode" == "sd-brs1-him" ]]; then
             task="Isaac-Limx-SDBRS1-HIM-Blind-Flat-v0"
             policy_type="HIMPPO"
+            min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
         elif [[ "$mode" == "sd-brs1-him-rough" ]]; then
             task="Isaac-Limx-SDBRS1-HIM-Blind-Rough-v0"
             policy_type="HIMPPO"
+            min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
         fi
         echo "Resuming $task from $load_run/$checkpoint for $max_iterations iterations on $container (device $device)"
         iexec "$container" "./isaaclab.sh -p -m pip install -e biped/exts/bipedal_locomotion biped/co_optimisation/ biped/himloco"
-        iexec "$container" "MESA_GL_VERSION_OVERRIDE=4.6 ./isaaclab.sh -p biped/scripts/rsl_rl/train.py --task $task --video --video_length 2000 --video_interval 10000 --save_interval 1000 --seed 42 --headless --device $device --policy-type $policy_type --resume True --load_run $load_run --checkpoint $checkpoint --max_iterations $max_iterations $run_name_arg"
+        iexec "$container" "MESA_GL_VERSION_OVERRIDE=4.6 ./isaaclab.sh -p biped/scripts/rsl_rl/train.py --task $task --video --video_length 2000 --video_interval 10000 --save_interval 1000 --seed 42 --headless --device $device --policy-type $policy_type --resume True --load_run $load_run --checkpoint $checkpoint --max_iterations $max_iterations $run_name_arg $debug_nan_arg $min_action_std_arg"
     fi
 fi
