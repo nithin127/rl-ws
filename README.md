@@ -153,3 +153,11 @@ Verify the NVIDIA Container Toolkit is installed: `docker run --rm --gpus all nv
 
 **Checkpoint not found in `djinn start play`**
 The checkpoint path is relative to `/workspace/isaaclab/logs/rsl_rl/` inside the container. Use `djinn exec lab "ls logs/rsl_rl"` to browse available experiments.
+
+
+## Sample commands
+DEBUG_NAN=1 ./djinn start train sd-brs1 0 v_fixHipYaw_expC
+
+DEBUG_NAN=1 ./djinn resume sd-brs1 0 2026-07-07_13-31-37_v_gait_expC_shaping_hipYaw0 model_prenan_reward_61061.pt 30000 v_expC_resumed
+
+python tron1-rl-isaaclab-cozum/scripts/rsl_rl/analyze_nan_crash.py <log_dir>/nan_state_history_reward_<step>.pt --compare
