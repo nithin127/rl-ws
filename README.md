@@ -119,7 +119,17 @@ djinn start evaluation 42 0
 
 # View interactive results dashboard
 djinn start visualise-evaluation
+
 ```
+
+```bash
+# More sample commands
+NUM_ENVS=20 ./djinn start play sd-brs1 2026-07-09_12-41-13_v_fixHipYaw_expC/model_prenan_reward_178713.pt 42 0
+
+# Visualise
+./djinn start visualise sd_brs1_flat 0 8050
+```
+
 
 See [ARCHITECTURE.md §7](ARCHITECTURE.md#djinn-automation-interface) for more information regarding the djinn interface.
 
