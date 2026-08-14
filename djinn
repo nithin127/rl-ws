@@ -154,6 +154,16 @@ if [[ -n $1 ]]; then
                     task="Isaac-Limx-SDBRS1-HIM-Blind-Rough-v0"
                     policy_type="HIMPPO"
                     min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
+                elif [[ "$3" == "kscale" ]]; then
+                    task="Isaac-Limx-Kscale-Blind-Flat-v0"
+                    min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
+                elif [[ "$3" == "kscale-rough" ]]; then
+                    task="Isaac-Limx-Kscale-Blind-Rough-v0"
+                    min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
+                elif [[ "$3" == "kscale-him" ]]; then
+                    task="Isaac-Limx-Kscale-HIM-Blind-Flat-v0"
+                    policy_type="HIMPPO"
+                    min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
                 fi
                 iexec "$container" "./isaaclab.sh -p -m pip install -e biped/exts/bipedal_locomotion biped/co_optimisation/ biped/himloco"
                 iexec "$container" "MESA_GL_VERSION_OVERRIDE=4.6 ./isaaclab.sh -p biped/scripts/rsl_rl/train.py --task $task --video --video_length 2000 --video_interval 10000 --save_interval 1000 --seed 42 --headless --device $device --policy-type $policy_type $run_name_arg $debug_nan_arg $min_action_std_arg"
@@ -166,6 +176,8 @@ if [[ -n $1 ]]; then
                 exp_name=""
                 if [[ "$3" == sd-brs1* ]]; then
                     exp_name="sd_brs1_flat/"
+                elif [[ "$3" == kscale* ]]; then
+                    exp_name="kscale_flat/"
                 fi
                 checkpoint_path="/workspace/isaaclab/logs/rsl_rl/$exp_name$4"
                 seed="$5"
@@ -190,6 +202,10 @@ if [[ -n $1 ]]; then
                     policy_type="COPT"
                 elif [[ "$3" == "sd-brs1" ]]; then
                     task="Isaac-Limx-SDBRS1-Blind-Flat-Play-v0"
+                elif [[ "$3" == "sd-brs1-legacy12dof" ]]; then
+                    # pre-HipYaw-fix 12-DOF robot, for checkpoints trained before
+                    # commit 56f02dd (e.g. runs from before 2026-07-09).
+                    task="Isaac-Limx-SDBRS1-Blind-Flat-Play-Legacy12DOF-v0"
                 elif [[ "$3" == "sd-brs1-rough" ]]; then
                     task="Isaac-Limx-SDBRS1-Blind-Rough-Play-v0"
                 elif [[ "$3" == "sd-brs1-him" ]]; then
@@ -197,6 +213,13 @@ if [[ -n $1 ]]; then
                     policy_type="HIMPPO"
                 elif [[ "$3" == "sd-brs1-him-rough" ]]; then
                     task="Isaac-Limx-SDBRS1-HIM-Blind-Rough-Play-v0"
+                    policy_type="HIMPPO"
+                elif [[ "$3" == "kscale" ]]; then
+                    task="Isaac-Limx-Kscale-Blind-Flat-Play-v0"
+                elif [[ "$3" == "kscale-rough" ]]; then
+                    task="Isaac-Limx-Kscale-Blind-Rough-Play-v0"
+                elif [[ "$3" == "kscale-him" ]]; then
+                    task="Isaac-Limx-Kscale-HIM-Blind-Flat-Play-v0"
                     policy_type="HIMPPO"
                 fi
                 # set LIN_VEL_X / LIN_VEL_Y / ANG_VEL_Z in the environment to pin the
@@ -308,6 +331,16 @@ if [[ -n $1 ]]; then
             min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
         elif [[ "$mode" == "sd-brs1-him-rough" ]]; then
             task="Isaac-Limx-SDBRS1-HIM-Blind-Rough-v0"
+            policy_type="HIMPPO"
+            min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
+        elif [[ "$mode" == "kscale" ]]; then
+            task="Isaac-Limx-Kscale-Blind-Flat-v0"
+            min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
+        elif [[ "$mode" == "kscale-rough" ]]; then
+            task="Isaac-Limx-Kscale-Blind-Rough-v0"
+            min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
+        elif [[ "$mode" == "kscale-him" ]]; then
+            task="Isaac-Limx-Kscale-HIM-Blind-Flat-v0"
             policy_type="HIMPPO"
             min_action_std_arg="--min_action_std ${MIN_ACTION_STD:-0.15}"
         fi

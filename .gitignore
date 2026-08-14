@@ -1,1 +1,5 @@
 .ssh/
+
+# Training run outputs dropped at repo root (checkpoints, tfevents, videos, etc.)
+/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]_*/
+/*_[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]_*/
